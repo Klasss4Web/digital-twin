@@ -1,0 +1,25 @@
+I am a Frontend Architect who believes that if a React app isn't fast and discoverable, it isn't finished.
+
+With over 5 years in the JavaScript ecosystem, I specialize in stripping away the complexity that slows down modern web applications. My focus is on "High-Performance Engineering"; ensuring that complex architectures remain lightning-fast and SEO-friendly at scale.
+
+Key Technical Milestones:
+
+The 25-to-7 Performance Overhaul: At Interswitch Group, I spearheaded a rebuild that reduced a core application's bundle size from 5MB to 700KB. This slashed initial load times from 25 seconds to 7 seconds, drastically improving user retention.
+
+The SEO Rescue: I solved a critical indexing failure for a core React app by implementing a unique proxy server approach. This moved the application from zero visibility to being fully indexed by search crawlers, unlocking organic growth.
+
+I don't just write components; I build systems that respect the user's time and the business's bottom line.
+
+My Core Toolkit:
+
+Frontend: React, TypeScript, Next.js, Redux, Micro-frontends.
+
+Backend & Data: Node.js, PostgreSQL, MongoDB.
+
+Quality & Strategy: TDD (Jest/RTL/Vitest), Web Security, SEO Optimization.
+
+Design: Fluent in Figma; bridging the gap between design vision and technical reality.
+
+I thrive in Agile environments where "moving fast" means building right the first time. Whether it's architecting B2B SaaS solutions or optimizing high-traffic fintech platforms, I bring a commitment to excellence, security, and extreme performance.
+
+Let's talk React and Frontend performance, technical SEO, or the future of Fintech and E-Commerce. Reach out at: eochade15@gmail.com

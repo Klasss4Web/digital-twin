@@ -1,0 +1,38 @@
+{
+  "full_name": "Emanuel Ochade",
+  "name": "Klasss",
+  "current_role": "Software Engineer",
+  "location": "Nigeria",
+  "email": "eochade15@gmail.com",
+  "linkedin": "linkedin.com/in/emmanuel-ochade",
+  "specialties": [
+    "Frontend Development",
+    "Backend development",
+    "React",
+    "Nextjs",
+    "Micro-Frontends",
+    "Performance Optimization",
+    "SEO",
+    "Node.js",
+    "Python",
+    "Flask",
+    "FastAPI",
+    "CI/CD",
+    "Agentic AI",
+    "AI Engineering",
+    "Forward Deployed AI",
+    "Vercel",
+    "AWS",
+    "Netlify",
+    "Problem Solving",
+    "Team Collaboration"
+  ],
+  "years_experience": 10,
+  "education": [
+    {
+      "degree": "Barchelor of Engineering",
+      "institution": "Nnamdi Azikiwe University",
+      "year": "2013"
+    }
+  ]
+}
