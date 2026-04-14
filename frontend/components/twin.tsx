@@ -39,7 +39,6 @@ export default function Twin() {
     setInput("");
     setIsLoading(true);
 
-    // const BASE_URL = "https://gc4w69voli.execute-api.eu-west-2.amazonaws.com";
     const BASE_URL =
       process.env.NODE_ENV === "development"
         ? "http://localhost:8000"
