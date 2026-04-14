@@ -39,8 +39,11 @@ export default function Twin() {
     setInput("");
     setIsLoading(true);
 
-    const BASE_URL = "https://gc4w69voli.execute-api.eu-west-2.amazonaws.com";
-    const BASE_URL_LOCAL = "http://localhost:8000";
+    // const BASE_URL = "https://gc4w69voli.execute-api.eu-west-2.amazonaws.com";
+    const BASE_URL =
+      process.env.NODE_ENV === "development"
+        ? "http://localhost:8000"
+        : "https://9bcb8ih1i8.execute-api.eu-west-2.amazonaws.com";
 
     try {
       const response = await fetch(
@@ -101,9 +104,11 @@ export default function Twin() {
       <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white p-4 rounded-t-lg">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <Bot className="w-6 h-6" />
-          AI Digital Twin
+          Emmanuel Ochade's AI Digital Twin
         </h2>
-        <p className="text-sm text-slate-300 mt-1">Your AI course companion</p>
+        <p className="text-sm text-slate-300 mt-1">
+          Chat with Ochade any time, any day
+        </p>
       </div>
 
       {/* Messages */}
@@ -111,8 +116,10 @@ export default function Twin() {
         {messages.length === 0 && (
           <div className="text-center text-gray-500 mt-8">
             <Bot className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-            <p>Hello! I&apos;m your Digital Twin.</p>
-            <p className="text-sm mt-2">Ask me anything about AI deployment!</p>
+            <p>Hello! I&apos;m Ochade's Digital Twin.</p>
+            <p className="text-sm mt-2">
+              Ask me anything about Ochade's professional experience!
+            </p>
           </div>
         )}
 

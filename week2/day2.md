@@ -38,11 +38,7 @@ Create `backend/data/facts.json` with information about who your twin represents
   "location": "Your Location",
   "email": "your.email@example.com",
   "linkedin": "linkedin.com/in/yourprofile",
-  "specialties": [
-    "Your specialty 1",
-    "Your specialty 2",
-    "Your specialty 3"
-  ],
+  "specialties": ["Your specialty 1", "Your specialty 2", "Your specialty 3"],
   "years_experience": 10,
   "education": [
     {
@@ -57,7 +53,7 @@ Create `backend/data/facts.json` with information about who your twin represents
 Create `backend/data/summary.txt` with a personal summary:
 
 ```
-I am a [your profession] with [X years] of experience in [your field]. 
+I am a [your profession] with [X years] of experience in [your field].
 My expertise includes [key areas of expertise].
 
 Currently, I'm focused on [current interests/projects].
@@ -80,6 +76,7 @@ Communication style:
 Please note: recently, LinkedIn has started to limit which kinds of account can export their profile as a PDF. If this feature isn't available to you, simply print your profile to PDF, or use a PDF resume instead.
 
 Save your LinkedIn profile as a PDF:
+
 1. Go to your LinkedIn profile
 2. Click "More" → "Save to PDF"
 3. Save as `backend/data/linkedin.pdf`
@@ -334,7 +331,7 @@ async def chat(request: ChatRequest):
 
         # Call OpenAI API
         response = client.chat.completions.create(
-            model="gpt-4o-mini", 
+            model="gpt-4o-mini",
             messages=messages
         )
 
@@ -398,7 +395,7 @@ uv add -r requirements.txt
 uv run uvicorn server:app --reload
 ```
 
-If you stopped your frontend then start it again:  
+If you stopped your frontend then start it again:
 
 1. Open a new terminal
 2. `cd frontend`
@@ -417,7 +414,7 @@ Create a `.env` file in your project root (`twin/.env`):
 AWS_ACCOUNT_ID=your_aws_account_id
 DEFAULT_AWS_REGION=us-east-1
 
-# OpenAI Configuration  
+# OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key
 
 # Project Configuration
@@ -436,7 +433,7 @@ Replace `your_aws_account_id` with your actual AWS account ID (12 digits).
 1. In AWS Console, search for **IAM**
 2. Click **User groups** → **Create group**
 3. Group name: `TwinAccess`
-4. Attach the following policies - IMPORTANT see the last one added in to avoid permission issues later!  
+4. Attach the following policies - IMPORTANT see the last one added in to avoid permission issues later!
    - `AWSLambda_FullAccess` - For Lambda operations
    - `AmazonS3FullAccess` - For S3 bucket operations
    - `AmazonAPIGatewayAdministrator` - For API Gateway
@@ -511,7 +508,7 @@ def main():
     for file in ["server.py", "lambda_handler.py", "context.py", "resources.py"]:
         if os.path.exists(file):
             shutil.copy2(file, "lambda-package/")
-    
+
     # Copy data directory
     if os.path.exists("data"):
         shutil.copytree("data", "lambda-package/data")
@@ -583,32 +580,34 @@ This method is more reliable for larger packages and slower internet connections
 1. First, create a temporary S3 bucket for deployment:
 
    **Mac/Linux:**
+
    ```bash
    # Create a unique bucket name with timestamp
    DEPLOY_BUCKET="twin-deploy-$(date +%s)"
-   
+
    # Create the bucket
    aws s3 mb s3://$DEPLOY_BUCKET
-   
+
    # Upload your zip file to S3
    aws s3 cp backend/lambda-deployment.zip s3://$DEPLOY_BUCKET/
-   
+
    # Display the S3 URI
    echo "S3 URI: s3://$DEPLOY_BUCKET/lambda-deployment.zip"
    ```
 
    **Windows (PowerShell):**
+
    ```powershell
    # Create a unique bucket name with timestamp
    $timestamp = Get-Date -Format "yyyyMMddHHmmss"
    $deployBucket = "twin-deploy-$timestamp"
-   
+
    # Create the bucket
    aws s3 mb s3://$deployBucket
-   
+
    # Upload your zip file to S3
    aws s3 cp backend/lambda-deployment.zip s3://$deployBucket/
-   
+
    # Display the S3 URI
    Write-Host "S3 URI: s3://$deployBucket/lambda-deployment.zip"
    ```
@@ -621,6 +620,7 @@ This method is more reliable for larger packages and slower internet connections
 6. After successful upload, clean up the temporary bucket:
 
    **Mac/Linux:**
+
    ```bash
    # Delete the file and bucket (replace with your bucket name)
    aws s3 rm s3://$DEPLOY_BUCKET/lambda-deployment.zip
@@ -628,6 +628,7 @@ This method is more reliable for larger packages and slower internet connections
    ```
 
    **Windows (PowerShell):**
+
    ```powershell
    # Delete the file and bucket (replace with your bucket name)
    aws s3 rm s3://$deployBucket/lambda-deployment.zip
@@ -635,6 +636,7 @@ This method is more reliable for larger packages and slower internet connections
    ```
 
 **Note**: The S3 upload method is particularly useful because:
+
 - S3 uploads can resume if interrupted
 - AWS Lambda pulls directly from S3 (faster than uploading through browser)
 - You can use multipart uploads for better reliability
@@ -757,16 +759,16 @@ This method is more reliable for larger packages and slower internet connections
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "PublicReadGetObject",
-            "Effect": "Allow",
-            "Principal": "*",
-            "Action": "s3:GetObject",
-            "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadGetObject",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
+    }
+  ]
 }
 ```
 
@@ -792,6 +794,7 @@ This method is more reliable for larger packages and slower internet connections
 2. You'll see a default route already created. Click **Add route** to add more:
 
 **Existing route (update it):**
+
 - Method: `ANY`
 - Resource path: `/{proxy+}`
 - Integration target: `twin-api` (should already be selected)
@@ -799,21 +802,25 @@ This method is more reliable for larger packages and slower internet connections
 **Add these additional routes (click Add route for each):**
 
 Route 1:
+
 - Method: `GET`
 - Resource path: `/`
 - Integration target: `twin-api`
 
 Route 2:
+
 - Method: `GET`
 - Resource path: `/health`
 - Integration target: `twin-api`
 
 Route 3:
+
 - Method: `POST`
 - Resource path: `/chat`
 - Integration target: `twin-api`
 
 Route 4 (for CORS):
+
 - Method: `OPTIONS`
 - Resource path: `/{proxy+}`
 - Integration target: `twin-api`
@@ -881,10 +888,10 @@ First, update `frontend/next.config.ts` to enable static export:
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  output: "export",
   images: {
-    unoptimized: true
-  }
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;
@@ -934,9 +941,10 @@ First, you need your S3 static website URL (not the bucket name):
 
 1. In AWS Console, search for **CloudFront**
 2. Click **Create distribution**
-3. You will be prompted to 'Choose a plan'.  Scroll to the bottom and choose **Pay as you go**.
+3. You will be prompted to 'Choose a plan'. Scroll to the bottom and choose **Pay as you go**.
 
-   IMPORTANT: DO NOT choose the 'free' plan. You won't be able to delete the distribution created until you cancel the subscription and wait for the end of billing cycle. It's a trap!!  
+   IMPORTANT: DO NOT choose the 'free' plan. You won't be able to delete the distribution created until you cancel the subscription and wait for the end of billing cycle. It's a trap!!
+
 4. **Step 1 - Origin:**
    - Distribution name: `twin-distribution`
    - Click **Next**
@@ -944,7 +952,7 @@ First, you need your S3 static website URL (not the bucket name):
    - Choose origin: Select **Other** (not Amazon S3!)
    - Origin domain name: Paste your S3 website endpoint WITHOUT the http://
      - Example: `twin-frontend-xxx.s3-website-us-east-1.amazonaws.com`
-   - **Origin protocol policy**: Select **HTTP only** (CRITICAL - not HTTPS!)
+   - **Origin protocol policy**: Select Custom, then Select **HTTP only** (CRITICAL - not HTTPS!)
      - This is because S3 static website hosting doesn't support HTTPS
      - If you select HTTPS, you'll get 504 Gateway Timeout errors
    - Origin name: `s3-static-website` (or leave auto-generated)
@@ -985,11 +993,10 @@ While waiting for CloudFront to deploy, update your Lambda to accept requests fr
    - <span style="color:#dd2222;">REALLY IMPORTANT - you need to be SUPER careful with this. This URL needs to be correct. If not, you will waste HOURS trying to debug weird errors, and you will get irritated, and you'll send me angry messages in Udemy 😂. To avoid that - please get this URL right!! It needs to start with "https://". It must not have a trailing "/". It needs to look just like the example above.<span>
 4. Click **Save**
 
+### <span style="color:#dd2222;">Now say out loud:</span>
 
-### <span style="color:#dd2222;">Now say out loud:</span>  
-
-- Yes, Ed, I set the CORS_ORIGINS environment variable correctly  
-- Yes, Ed, it matches the Cloudfront URL, it includes `https://` at the start, and there's no `/` at the end, and it looks just like the example  
+- Yes, Ed, I set the CORS_ORIGINS environment variable correctly
+- Yes, Ed, it matches the Cloudfront URL, it includes `https://` at the start, and there's no `/` at the end, and it looks just like the example
 - Yes, Ed, I checked it twice..
 
 Thank you!
@@ -1030,7 +1037,7 @@ This allows your Lambda function to accept requests only from your CloudFront di
 
 If you see CORS errors in browser console:
 
-1. Verify Lambda environment variable `CORS_ORIGINS` includes your CloudFront URL with "https://" at the start and no trailing "/" - THIS MUST BE PRECISELY RIGHT!  
+1. Verify Lambda environment variable `CORS_ORIGINS` includes your CloudFront URL with "https://" at the start and no trailing "/" - THIS MUST BE PRECISELY RIGHT!
 2. Check API Gateway CORS configuration
 3. Make sure OPTIONS route is configured
 4. Clear browser cache and try incognito mode
@@ -1068,7 +1075,7 @@ If you see CORS errors in browser console:
 User Browser
     ↓ HTTPS
 CloudFront (CDN)
-    ↓ 
+    ↓
 S3 Static Website (Frontend)
     ↓ HTTPS API Calls
 API Gateway
@@ -1092,7 +1099,7 @@ Lambda Function (Backend)
 ### Current Costs (Approximate)
 
 - Lambda: First 1M requests free, then $0.20 per 1M requests
-- API Gateway: First 1M requests free, then $1.00 per 1M requests  
+- API Gateway: First 1M requests free, then $1.00 per 1M requests
 - S3: ~$0.023 per GB stored, ~$0.0004 per 1,000 requests
 - CloudFront: First 1TB free, then ~$0.085 per GB
 - **Total**: Should stay under $5/month for moderate usage
@@ -1117,6 +1124,7 @@ Lambda Function (Backend)
 ## Next Steps
 
 Tomorrow (Day 3), we'll:
+
 - Replace OpenAI with AWS Bedrock for AI responses
 - Add advanced memory features
 - Implement conversation analytics

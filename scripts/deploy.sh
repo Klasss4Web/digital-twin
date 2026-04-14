@@ -1,127 +1,330 @@
 #!/bin/bash
 set -e
 
-ENVIRONMENT=${1:-dev}          # dev | test | prod
+# Check if environment parameter is provided
+if [ $# -eq 0 ]; then
+    echo "❌ Error: Environment parameter is required"
+    echo "Usage: $0 <environment>"
+    echo "Example: $0 dev"
+    echo "Available environments: dev, test, prod"
+    exit 1
+fi
+
+ENVIRONMENT=$1
 PROJECT_NAME=${2:-twin}
 
-echo "🚀 Deploying ${PROJECT_NAME} to ${ENVIRONMENT}..."
+echo "🗑️ Preparing to destroy ${PROJECT_NAME}-${ENVIRONMENT} infrastructure..."
 
-# 1. Build Lambda package
-cd "$(dirname "$0")/.."        # project root
-echo "📦 Building Lambda package..."
-(cd backend && uv run deploy.py)
+# Navigate to terraform directory
+cd "$(dirname "$0")/../terraform"
 
-# 2. Terraform workspace & apply
-cd terraform
-terraform init -input=false
+# Get AWS Account ID and Region for backend configuration
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+AWS_REGION=${DEFAULT_AWS_REGION:-us-east-1}
 
+# Initialize terraform with S3 backend
+echo "🔧 Initializing Terraform with S3 backend..."
+terraform init -input=false \
+  -backend-config="bucket=twin-terraform-state-${AWS_ACCOUNT_ID}" \
+  -backend-config="key=${ENVIRONMENT}/terraform.tfstate" \
+  -backend-config="region=${AWS_REGION}" \
+  -backend-config="dynamodb_table=twin-terraform-locks" \
+  -backend-config="encrypt=true"
+
+# Check if workspace exists
 if ! terraform workspace list | grep -q "$ENVIRONMENT"; then
-  terraform workspace new "$ENVIRONMENT"
+    echo "❌ Error: Workspace '$ENVIRONMENT' does not exist"
+    echo "Available workspaces:"
+    terraform workspace list
+    exit 1
+fi
+
+# Select the workspace
+terraform workspace select "$ENVIRONMENT"
+
+echo "📦 Emptying S3 buckets..."
+
+# Get bucket names with account ID (matching Day 4 naming)
+FRONTEND_BUCKET="${PROJECT_NAME}-${ENVIRONMENT}-frontend-${AWS_ACCOUNT_ID}"
+MEMORY_BUCKET="${PROJECT_NAME}-${ENVIRONMENT}-memory-${AWS_ACCOUNT_ID}"
+
+# Empty frontend bucket if it exists
+if aws s3 ls "s3://$FRONTEND_BUCKET" 2>/dev/null; then
+    echo "  Emptying $FRONTEND_BUCKET..."
+    aws s3 rm "s3://$FRONTEND_BUCKET" --recursive
 else
-  terraform workspace select "$ENVIRONMENT"
+    echo "  Frontend bucket not found or already empty"
 fi
 
-# Use prod.tfvars for production environment
-if [ "$ENVIRONMENT" = "prod" ]; then
-  TF_APPLY_CMD=(terraform apply -var-file=prod.tfvars -var="project_name=$PROJECT_NAME" -var="environment=$ENVIRONMENT" -auto-approve)
+# Empty memory bucket if it exists
+if aws s3 ls "s3://$MEMORY_BUCKET" 2>/dev/null; then
+    echo "  Emptying $MEMORY_BUCKET..."
+    aws s3 rm "s3://$MEMORY_BUCKET" --recursive
 else
-  TF_APPLY_CMD=(terraform apply -var="project_name=$PROJECT_NAME" -var="environment=$ENVIRONMENT" -auto-approve)
+    echo "  Memory bucket not found or already empty"
 fi
 
-echo "🎯 Applying Terraform..."
-"${TF_APPLY_CMD[@]}"
+echo "🔥 Running terraform destroy..."
 
-API_URL=$(terraform output -raw api_gateway_url)
-FRONTEND_BUCKET=$(terraform output -raw s3_frontend_bucket)
-CUSTOM_URL=$(terraform output -raw custom_domain_url 2>/dev/null || true)
-
-# 3. Build + deploy frontend
-cd ../frontend
-
-# Create production environment file with API URL
-echo "📝 Setting API URL for production..."
-echo "NEXT_PUBLIC_API_URL=$API_URL" > .env.production
-
-npm install
-npm run build
-aws s3 sync ./out "s3://$FRONTEND_BUCKET/" --delete
-cd ..
-
-# 4. Final messages
-echo -e "\n✅ Deployment complete!"
-echo "🌐 CloudFront URL : $(terraform -chdir=terraform output -raw cloudfront_url)"
-if [ -n "$CUSTOM_URL" ]; then
-  echo "🔗 Custom domain  : $CUSTOM_URL"
+# Create a dummy lambda zip if it doesn't exist (needed for destroy in GitHub Actions)
+if [ ! -f "../backend/lambda-deployment.zip" ]; then
+    echo "Creating dummy lambda package for destroy operation..."
+    echo "dummy" | zip ../backend/lambda-deployment.zip -
 fi
-echo "📡 API Gateway    : $API_URL"
+
+# Run terraform destroy with auto-approve
+if [ "$ENVIRONMENT" = "prod" ] && [ -f "prod.tfvars" ]; then
+    terraform destroy -var-file=prod.tfvars -var="project_name=$PROJECT_NAME" -var="environment=$ENVIRONMENT" -auto-approve
+else
+    terraform destroy -var="project_name=$PROJECT_NAME" -var="environment=$ENVIRONMENT" -auto-approve
+fi
+
+echo "✅ Infrastructure for ${ENVIRONMENT} has been destroyed!"
+echo ""
+echo "💡 To remove the workspace completely, run:"
+echo "   terraform workspace select default"
+echo "   terraform workspace delete $ENVIRONMENT"
 ```
 
-# **For Mac/Linux users only** - make it executable:
-# ```bash
-# chmod +x scripts/deploy.sh
-# ```
+Replace your entire `scripts/destroy.ps1` with this updated version:
 
-# **Windows users**: You don't need to run the chmod command, just create the file.
+```powershell
+param(
+    [Parameter(Mandatory=$true)]
+    [string]$Environment,
+    [string]$ProjectName = "twin"
+)
 
-# ### Step 3: Create PowerShell Script for Windows
+# Validate environment parameter
+if ($Environment -notmatch '^(dev|test|prod)$') {
+    Write-Host "Error: Invalid environment '$Environment'" -ForegroundColor Red
+    Write-Host "Available environments: dev, test, prod" -ForegroundColor Yellow
+    exit 1
+}
 
-# **Mac/Linux users**: You can skip this step - it's only needed for Windows users.
+Write-Host "Preparing to destroy $ProjectName-$Environment infrastructure..." -ForegroundColor Yellow
 
-# Create `scripts/deploy.ps1`:
+# Navigate to terraform directory
+Set-Location (Join-Path (Split-Path $PSScriptRoot -Parent) "terraform")
 
-# ```powershell
-# param(
-#     [string]$Environment = "dev",   # dev | test | prod
-#     [string]$ProjectName = "twin"
-# )
-# $ErrorActionPreference = "Stop"
+# Get AWS Account ID for backend configuration
+$awsAccountId = aws sts get-caller-identity --query Account --output text
+$awsRegion = if ($env:DEFAULT_AWS_REGION) { $env:DEFAULT_AWS_REGION } else { "us-east-1" }
 
-# Write-Host "Deploying $ProjectName to $Environment ..." -ForegroundColor Green
+# Initialize terraform with S3 backend
+Write-Host "Initializing Terraform with S3 backend..." -ForegroundColor Yellow
+terraform init -input=false `
+  -backend-config="bucket=twin-terraform-state-$awsAccountId" `
+  -backend-config="key=$Environment/terraform.tfstate" `
+  -backend-config="region=$awsRegion" `
+  -backend-config="dynamodb_table=twin-terraform-locks" `
+  -backend-config="encrypt=true"
 
-# # 1. Build Lambda package
-# Set-Location (Split-Path $PSScriptRoot -Parent)   # project root
-# Write-Host "Building Lambda package..." -ForegroundColor Yellow
-# Set-Location backend
-# uv run deploy.py
-# Set-Location ..
+# Check if workspace exists
+$workspaces = terraform workspace list
+if (-not ($workspaces | Select-String $Environment)) {
+    Write-Host "Error: Workspace '$Environment' does not exist" -ForegroundColor Red
+    Write-Host "Available workspaces:" -ForegroundColor Yellow
+    terraform workspace list
+    exit 1
+}
 
-# # 2. Terraform workspace & apply
-# Set-Location terraform
-# terraform init -input=false
+# Select the workspace
+terraform workspace select $Environment
 
-# if (-not (terraform workspace list | Select-String $Environment)) {
-#     terraform workspace new $Environment
-# } else {
-#     terraform workspace select $Environment
-# }
+Write-Host "Emptying S3 buckets..." -ForegroundColor Yellow
 
-# if ($Environment -eq "prod") {
-#     terraform apply -var-file="prod.tfvars" -var="project_name=$ProjectName" -var="environment=$Environment" -auto-approve
-# } else {
-#     terraform apply -var="project_name=$ProjectName" -var="environment=$Environment" -auto-approve
-# }
+# Define bucket names with account ID (matching Day 4 naming)
+$FrontendBucket = "$ProjectName-$Environment-frontend-$awsAccountId"
+$MemoryBucket = "$ProjectName-$Environment-memory-$awsAccountId"
 
-# $ApiUrl        = terraform output -raw api_gateway_url
-# $FrontendBucket = terraform output -raw s3_frontend_bucket
-# try { $CustomUrl = terraform output -raw custom_domain_url } catch { $CustomUrl = "" }
+# Empty frontend bucket if it exists
+try {
+    aws s3 ls "s3://$FrontendBucket" 2>$null | Out-Null
+    Write-Host "  Emptying $FrontendBucket..." -ForegroundColor Gray
+    aws s3 rm "s3://$FrontendBucket" --recursive
+} catch {
+    Write-Host "  Frontend bucket not found or already empty" -ForegroundColor Gray
+}
 
-# # 3. Build + deploy frontend
-# Set-Location ..\frontend
+# Empty memory bucket if it exists
+try {
+    aws s3 ls "s3://$MemoryBucket" 2>$null | Out-Null
+    Write-Host "  Emptying $MemoryBucket..." -ForegroundColor Gray
+    aws s3 rm "s3://$MemoryBucket" --recursive
+} catch {
+    Write-Host "  Memory bucket not found or already empty" -ForegroundColor Gray
+}
 
-# # Create production environment file with API URL
-# Write-Host "Setting API URL for production..." -ForegroundColor Yellow
-# "NEXT_PUBLIC_API_URL=$ApiUrl" | Out-File .env.production -Encoding utf8
+Write-Host "Running terraform destroy..." -ForegroundColor Yellow
 
-# npm install
-# npm run build
-# aws s3 sync .\out "s3://$FrontendBucket/" --delete
-# Set-Location ..
+# Run terraform destroy with auto-approve
+if ($Environment -eq "prod" -and (Test-Path "prod.tfvars")) {
+    terraform destroy -var-file=prod.tfvars `
+                     -var="project_name=$ProjectName" `
+                     -var="environment=$Environment" `
+                     -auto-approve
+} else {
+    terraform destroy -var="project_name=$ProjectName" `
+                     -var="environment=$Environment" `
+                     -auto-approve
+}
 
-# # 4. Final summary
-# $CfUrl = terraform -chdir=terraform output -raw cloudfront_url
-# Write-Host "Deployment complete!" -ForegroundColor Green
-# Write-Host "CloudFront URL : $CfUrl" -ForegroundColor Cyan
-# if ($CustomUrl) {
-#     Write-Host "Custom domain  : $CustomUrl" -ForegroundColor Cyan
-# }
-# Write-Host "API Gateway    : $ApiUrl" -ForegroundColor Cyan
+Write-Host "Infrastructure for $Environment has been destroyed!" -ForegroundColor Green
+Write-Host ""
+Write-Host "  To remove the workspace completely, run:" -ForegroundColor Cyan
+Write-Host "   terraform workspace select default" -ForegroundColor White
+Write-Host "   terraform workspace delete $Environment" -ForegroundColor White
+```
+
+## Part 4: Configure GitHub Repository Secrets
+
+### Step 1: Create AWS IAM Role for GitHub Actions
+
+As of August 2025, GitHub strongly recommends using OpenID Connect (OIDC) for AWS authentication. This is more secure than storing long-lived access keys.
+
+Create `terraform/github-oidc.tf`:
+
+```hcl
+# This creates an IAM role that GitHub Actions can assume
+# Run this once, then you can remove the file
+
+variable "github_repository" {
+  description = "GitHub repository in format 'owner/repo'"
+  type        = string
+}
+
+# Note: aws_caller_identity.current is already defined in main.tf
+
+# GitHub OIDC Provider
+# Note: If this already exists in your account, you'll need to import it:
+# terraform import aws_iam_openid_connect_provider.github arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com
+resource "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+  
+  client_id_list = [
+    "sts.amazonaws.com"
+  ]
+  
+  # This thumbprint is from GitHub's documentation
+  # Verify current value at: https://github.blog/changelog/2023-06-27-github-actions-update-on-oidc-integration-with-aws/
+  thumbprint_list = [
+    "1b511abead59c6ce207077c0bf0e0043b1382612"
+  ]
+}
+
+# IAM Role for GitHub Actions
+resource "aws_iam_role" "github_actions" {
+  name = "github-actions-twin-deploy"
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.github.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
+          StringLike = {
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repository}:*"
+          }
+        }
+      }
+    ]
+  })
+  
+  tags = {
+    Name        = "GitHub Actions Deploy Role"
+    Repository  = var.github_repository
+    ManagedBy   = "terraform"
+  }
+}
+
+# Attach necessary policies
+resource "aws_iam_role_policy_attachment" "github_lambda" {
+  policy_arn = "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
+  role       = aws_iam_role.github_actions.name
+}
+
+resource "aws_iam_role_policy_attachment" "github_s3" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+  role       = aws_iam_role.github_actions.name
+}
+
+resource "aws_iam_role_policy_attachment" "github_apigateway" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator"
+  role       = aws_iam_role.github_actions.name
+}
+
+resource "aws_iam_role_policy_attachment" "github_cloudfront" {
+  policy_arn = "arn:aws:iam::aws:policy/CloudFrontFullAccess"
+  role       = aws_iam_role.github_actions.name
+}
+
+resource "aws_iam_role_policy_attachment" "github_iam_read" {
+  policy_arn = "arn:aws:iam::aws:policy/IAMReadOnlyAccess"
+  role       = aws_iam_role.github_actions.name
+}
+
+resource "aws_iam_role_policy_attachment" "github_bedrock" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"
+  role       = aws_iam_role.github_actions.name
+}
+
+resource "aws_iam_role_policy_attachment" "github_dynamodb" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+  role       = aws_iam_role.github_actions.name
+}
+
+resource "aws_iam_role_policy_attachment" "github_acm" {
+  policy_arn = "arn:aws:iam::aws:policy/AWSCertificateManagerFullAccess"
+  role       = aws_iam_role.github_actions.name
+}
+
+resource "aws_iam_role_policy_attachment" "github_route53" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonRoute53FullAccess"
+  role       = aws_iam_role.github_actions.name
+}
+
+# Custom policy for additional permissions
+resource "aws_iam_role_policy" "github_additional" {
+  name = "github-actions-additional"
+  role = aws_iam_role.github_actions.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:UpdateAssumeRolePolicy",
+          "iam:PassRole",
+          "iam:TagRole",
+          "iam:UntagRole",
+          "iam:ListInstanceProfilesForRole",
+          "sts:GetCallerIdentity"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+output "github_actions_role_arn" {
+  value = aws_iam_role.github_actions.arn
+}
