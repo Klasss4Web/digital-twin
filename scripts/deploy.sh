@@ -30,6 +30,14 @@ else
   terraform workspace select "$ENVIRONMENT"
 fi
 
+# Fix for the "ghost" Lambda role error
+if terraform state list | grep -q "aws_iam_role.lambda_role"; then
+    echo "Check: Lambda role is already in state."
+else
+    echo "Check: Lambda role not in state. Attempting to import to prevent 409 conflict..."
+    terraform import aws_iam_role.lambda_role "${PROJECT_NAME}-${ENVIRONMENT}-lambda-role" || true
+fi
+
 # Use prod.tfvars for production environment
 if [ "$ENVIRONMENT" = "prod" ]; then
   TF_APPLY_CMD=(terraform apply -var-file=prod.tfvars -var="project_name=$PROJECT_NAME" -var="environment=$ENVIRONMENT" -auto-approve)
